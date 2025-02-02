@@ -74,8 +74,6 @@ import { nftGenerationPlugin } from "@elizaos/plugin-nft-generation";
 import { createNodePlugin } from "@elizaos/plugin-node";
 import { obsidianPlugin } from "@elizaos/plugin-obsidian";
 import { sgxPlugin } from "@elizaos/plugin-sgx";
-import { solanaPlugin } from "@elizaos/plugin-solana";
-import { solanaAgentkitPlguin } from "@elizaos/plugin-solana-agentkit";
 import { autonomePlugin } from "@elizaos/plugin-autonome";
 import { storyPlugin } from "@elizaos/plugin-story";
 import { suiPlugin } from "@elizaos/plugin-sui";
@@ -103,6 +101,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
 import {dominosPlugin} from "@elizaos/plugin-dominos";
+import { movementPlugin } from "@elizaos/plugin-movement";
+import {  unjeet } from "../intern"
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
@@ -290,34 +290,18 @@ export async function loadCharacters(
     return loadedCharacters;
 }
 
-async function handlePluginImporting(plugins: string[]) {
-    if (plugins.length > 0) {
-        elizaLogger.info("Plugins are: ", plugins);
-        const importedPlugins = await Promise.all(
-            plugins.map(async (plugin) => {
-                try {
-                    const importedPlugin = await import(plugin);
-                    const functionName =
-                        plugin
-                            .replace("@elizaos/plugin-", "")
-                            .replace(/-./g, (x) => x[1].toUpperCase()) +
-                        "Plugin"; // Assumes plugin function is camelCased with Plugin suffix
-                    return (
-                        importedPlugin.default || importedPlugin[functionName]
-                    );
-                } catch (importError) {
-                    elizaLogger.error(
-                        `Failed to import plugin: ${plugin}`,
-                        importError
-                    );
-                    return []; // Return null for failed imports
-                }
-            })
-        );
-        return importedPlugins;
-    } else {
-        return [];
+async function handlePluginImporting(plugins: any[]): Promise<any[]> {
+    const importedPlugins = [];
+    for (const plugin of plugins) {
+        if (typeof plugin === "string") {
+            if (plugin === "@elizaos/plugin-movement") {
+                importedPlugins.push(movementPlugin);
+            }
+        } else {
+            importedPlugins.push(plugin);
+        }
     }
+    return importedPlugins;
 }
 
 export function getTokenForProvider(
@@ -854,6 +838,7 @@ export async function createAgent(
             getSecret(character, "QUAI_PRIVATE_KEY")
                 ? quaiPlugin
                 : null,
+            getSecret(character, "MOVEMENT_PRIVATE_KEY") ? movementPlugin : null,
         ].filter(Boolean),
         providers: [],
         actions: [],
@@ -1020,7 +1005,7 @@ const startAgents = async () => {
     let serverPort = parseInt(settings.SERVER_PORT || "3000");
     const args = parseArguments();
     let charactersArg = args.characters || args.character;
-    let characters = [defaultCharacter];
+    let characters = [unjeet];
 
     if (charactersArg) {
         characters = await loadCharacters(charactersArg);
